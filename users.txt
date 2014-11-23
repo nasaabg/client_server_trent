@@ -1,0 +1,11 @@
+Przykładowi użytkownicy:
+
+
+1.  nick: Janek
+    password: sad13dA
+
+2.  nick: Olek
+    password: as123bsss
+
+3.  nick: Tomek
+    password: 923hsdkD
