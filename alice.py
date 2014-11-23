@@ -3,6 +3,7 @@ import sys
 import hashlib
 import random
 from pyDes import *
+from hashEngine import HashEngine
 
 bob_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 trent_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -13,6 +14,7 @@ NONCE = str(random.randint(100000, 999999))
 KEY = "12345678"
 SESSION_KEY = ""
 msg = "To jest wiadomosc klienta do servera"
+hash_engine = HashEngine()
 
 
 def get_response(sock):
@@ -51,21 +53,6 @@ def check_response(response):
     else:
         print "Response wrong."
     
-def generate_hash(value_one, value_two):
-    value = hashlib.md5()
-    value.update(value_one)
-    value.update(value_two)
-    return value.hexdigest()
-
-def hahs_function(message):
-    value = hashlib.md5()
-    value.update(message)
-    return value.hexdigest()
-
-
-def compare_hashes(received_hash, nonce, secured_password):
-    return received_hash == generate_hash(secured_password, nonce)   
-
 
 print 'Connecting to Bob on: %s port %s' % bob_address
 bob_sock.connect(bob_address)
@@ -118,8 +105,8 @@ try:
   password = raw_input('Type your password: ')
 
   # generate hash 
-  secured_password = hahs_function(password)
-  user_hash = generate_hash(nonce, secured_password)
+  secured_password = hash_engine.hahs_function(password)
+  user_hash = hash_engine.generate_hash(nonce, secured_password)
 
   # send user_hash to server
   send_request(bob_sock, user_hash) 
@@ -128,7 +115,8 @@ try:
   hash_from_server = get_response(bob_sock)
 
   # compare hash to authenticate server
-  if compare_hashes(hash_from_server, nonce, secured_password):
+  alice_hash = hash_engine.generate_hash(secured_password, nonce)
+  if hash_engine.compare_hashes(hash_from_server, alice_hash):
       print "Authentication succeeded! Server authenticated!"
       print 'Sending Request: ' + msg
       encrypted_msg = encrypt(msg, SESSION_KEY)
