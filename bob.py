@@ -3,6 +3,7 @@ import sys
 import hashlib
 import random
 from pyDes import *
+from hashEngine import HashEngine
 
 
 # VARIABLES
@@ -11,6 +12,7 @@ ID = "1"
 NONCE = str(random.randint(100000, 999999))
 SESSION_KEY = ""
 KEY = "87654321"
+hash_engine = HashEngine()
 
 
 # Preper table
@@ -54,14 +56,6 @@ def get_session_key(data):
 def make_some_tasks(data):
     return data[::-1]
 
-# hash function
-def hash_function(value_one, value_two):
-    value = hashlib.md5()
-    value.update(value_one)
-    value.update(value_two)
-    return value.hexdigest()
-
-
 # authentication
 def authenticate_client():
     # ask about user name
@@ -80,7 +74,7 @@ def authenticate_client():
         if user == -1:
             return False
         user_secured_password = user[1]
-        hash_for_client = hash_function(user_secured_password, NONCE)
+        hash_for_client = hash_engine.generate_hash(user_secured_password, NONCE)
         send_response(hash_for_client)
         return True
     else:
@@ -92,7 +86,7 @@ def compare_hashes(received_hash, user_name):
     if user == -1:
             return False
     secured_password = user[1]
-    hash_to_compare = hash_function(NONCE, secured_password)
+    hash_to_compare = hash_engine.generate_hash(NONCE, secured_password)
 
     return hash_to_compare == received_hash
 
