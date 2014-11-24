@@ -4,6 +4,8 @@ import hashlib
 import random
 from pyDes import *
 from hashEngine import HashEngine
+from cryptoEngine import CryptoEngine
+
 
 
 # VARIABLES
@@ -11,8 +13,8 @@ SERVER_ADDRESS = ('localhost', 4000)
 ID = "1"
 NONCE = str(random.randint(100000, 999999))
 SESSION_KEY = ""
-KEY = "87654321"
 hash_engine = HashEngine()
+crypto_engine_bob = CryptoEngine("87654321")
 
 
 # Preper table
@@ -39,16 +41,6 @@ def get_request():
     if request:
         return request
     
-def encrypt(data, key):
-    k = des(key, CBC, "\0\0\0\0\0\0\0\0", pad=None, padmode=PAD_PKCS5)
-    encrypted_data = k.encrypt(data)
-    return encrypted_data
-
-def decrypt(data, key):
-    k = des(key, CBC, "\0\0\0\0\0\0\0\0", pad=None, padmode=PAD_PKCS5)
-    decrypted_data = k.decrypt(data)
-    return decrypted_data
-
 def get_session_key(data):
     params = data.split(',')
     return params[0]
@@ -130,17 +122,18 @@ try:
     print "Waiting for session key."
     # Getting SESSION KEY form message
     message = get_request()
-    decrypted_message = decrypt(message, KEY)
+    decrypted_message = crypto_engine_bob.decrypt(message)
     SESSION_KEY = get_session_key(decrypted_message)
+    crypto_engine_session = CryptoEngine(SESSION_KEY)
 
     print "Session key established. Authentication."
 
     if authenticate_client():
         # Getting request from Alice, sending response
         request = get_request()
-        decrypted_request = decrypt(request, SESSION_KEY)
+        decrypted_request = crypto_engine_session.decrypt(request)
         response = make_some_tasks(decrypted_request)
-        encrypted_response = encrypt(response, SESSION_KEY)
+        encrypted_response = crypto_engine_session.encrypt(response)
         send_response(encrypted_response)
     else:
         break_connection()

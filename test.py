@@ -1,11 +1,12 @@
 from hashEngine import HashEngine
+from cryptoEngine import CryptoEngine
 
-x = HashEngine()
+x = CryptoEngine("12345678")
 
-hash_value1 = x.generate_hash("janek", "kurzydlo")
+msg = x.encrypt("message")
 
-hash_value2 = x.generate_hash("janek", "kurzydlo")
+print msg
 
-print x.compare_hashes(hash_value1, hash_value2)
+z = x.decrypt(msg)
 
-#pamietac o gonerowaniu hasha
+print z

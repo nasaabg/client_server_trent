@@ -4,6 +4,8 @@ import hashlib
 import random
 from pyDes import *
 from hashEngine import HashEngine
+from cryptoEngine import CryptoEngine
+
 
 bob_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 trent_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -11,10 +13,10 @@ bob_address = ('localhost', 4000)
 trent_address = ('localhost', 3000)
 ID = "2"
 NONCE = str(random.randint(100000, 999999))
-KEY = "12345678"
 SESSION_KEY = ""
 msg = "To jest wiadomosc klienta do servera"
 hash_engine = HashEngine()
+crypto_engine_trent = CryptoEngine("12345678")
 
 
 def get_response(sock):
@@ -32,16 +34,6 @@ def get_nonce(response):
 
 def send_request(sock, data):
     sock.sendall(data)
-
-def encrypt(data, key):
-    k = des(key, CBC, "\0\0\0\0\0\0\0\0", pad=None, padmode=PAD_PKCS5)
-    encrypted_data = k.encrypt(data)
-    return encrypted_data
-
-def decrypt(data, key):
-    k = des(key, CBC, "\0\0\0\0\0\0\0\0", pad=None, padmode=PAD_PKCS5)
-    decrypted_data = k.decrypt(data)
-    return decrypted_data
 
 def get_session_key(data):
     params = data.split(',')
@@ -83,8 +75,9 @@ try:
   print 'Message for Bob received. Sending confirmation.'
 
   # Getting SESSION KEY from trent message
-  decrypted_data = decrypt(message_for_me, KEY)
+  decrypted_data = crypto_engine_trent.decrypt(message_for_me)
   SESSION_KEY = get_session_key(decrypted_data)
+  crypto_engine_sesion = CryptoEngine(SESSION_KEY)
 
   print "Sending session key to Bob."
   send_request(bob_sock, message_for_bob)
@@ -119,10 +112,10 @@ try:
   if hash_engine.compare_hashes(hash_from_server, alice_hash):
       print "Authentication succeeded! Server authenticated!"
       print 'Sending Request: ' + msg
-      encrypted_msg = encrypt(msg, SESSION_KEY)
+      encrypted_msg = crypto_engine_sesion.encrypt(msg)
       send_request(bob_sock, encrypted_msg)
       response = get_response(bob_sock)
-      decrypted_response = decrypt(response, SESSION_KEY)
+      decrypted_response = crypto_engine_sesion.decrypt(response)
       print "Response: " + decrypted_response
       print "Checking if correct response.."
       check_response(decrypted_response)
