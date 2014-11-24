@@ -6,15 +6,17 @@ from pyDes import *
 from hashEngine import HashEngine
 from cryptoEngine import CryptoEngine
 
+ID = "2"
 
 bob_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 trent_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
 bob_address = ('localhost', 4000)
 trent_address = ('localhost', 3000)
-ID = "2"
+
 NONCE = str(random.randint(100000, 999999))
-SESSION_KEY = ""
 msg = "To jest wiadomosc klienta do servera"
+
 hash_engine = HashEngine()
 crypto_engine_trent = CryptoEngine("12345678")
 

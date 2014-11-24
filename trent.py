@@ -3,6 +3,8 @@ import sys
 import hashlib
 import random
 from pyDes import *
+from cryptoEngine import CryptoEngine
+from communicationModule import CommunicationModule
 
 # VARIABLES
 SERVER_ADDRESS = ('localhost', 3000)
@@ -12,15 +14,9 @@ BOB_ID = "1"
 BOB_KEY = "87654321"
 ALICE_ID = "2"
 ALICE_KEY = "12345678"
+crypto_engine_bob = CryptoEngine(BOB_KEY)
+crypto_engine_alice = CryptoEngine(ALICE_KEY)
 
-def get_request():
-    request = connection.recv(512)
-    if request:
-        return request
-
-def send_response(data):
-    connection.send(data)
-    
 def get_values(message):
     params = message.split(',')
     return params
@@ -37,18 +33,6 @@ def valid_users(params):
     else:
        return False
 
-def encrypt(data, key):
-    k = des(key, CBC, "\0\0\0\0\0\0\0\0", pad=None, padmode=PAD_PKCS5)
-    encrypted_data = k.encrypt(data)
-    return encrypted_data
-
-def decrypt(data, key):
-    k = des(key, CBC, "\0\0\0\0\0\0\0\0", pad=None, padmode=PAD_PKCS5)
-    decrypted_data = k.decrypt(data)
-    return decrypted_data
-    
-
-
 # Create a TCP/IP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -64,10 +48,11 @@ sock.listen(1)
 # Wait for a connection
 print >>sys.stderr, 'waiting for a connection'
 connection, client_address = sock.accept()
+communication_engine = CommunicationModule(connection)
 
 try:
     print >>sys.stderr, 'connection from', client_address
-    request = get_request()
+    request = communication_engine.get_request()
     params_from_alice = get_values(request)
 
     alice_id = params_from_alice[0]
@@ -84,12 +69,12 @@ try:
       message_for_a = ','.join(params_for_a)
       message_for_b = ','.join(params_for_b)
 
-      encrypted_data_a = encrypt(message_for_a, ALICE_KEY)
-      encrypted_data_b = encrypt(message_for_b, BOB_KEY)
+      encrypted_data_a = crypto_engine_alice.encrypt(message_for_a)
+      encrypted_data_b = crypto_engine_bob.encrypt(message_for_b)
 
-      send_response(encrypted_data_a)
-      request = get_request()
-      send_response(encrypted_data_b)
+      communication_engine.send_response(encrypted_data_a)
+      request = communication_engine.get_request()
+      communication_engine.send_response(encrypted_data_b)
       print "Session key sent."
     else:
       print "Something went wrong."

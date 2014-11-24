@@ -5,21 +5,25 @@ import random
 from pyDes import *
 from hashEngine import HashEngine
 from cryptoEngine import CryptoEngine
+from communicationModule import CommunicationModule
+from authenticationEngine import AuthenticationEngine
 
 
 
 # VARIABLES
-SERVER_ADDRESS = ('localhost', 4000)
+
 ID = "1"
+
+SERVER_ADDRESS = ('localhost', 4000)
 NONCE = str(random.randint(100000, 999999))
-SESSION_KEY = ""
+
 hash_engine = HashEngine()
 crypto_engine_bob = CryptoEngine("87654321")
 
 
 # Preper table
+# Usowam znaki konca lini, dziele dane na podgrupy (user_name, secured_password)
 def prepere_users_tabel():
-    # Usowam znaki konca lini, dziele dane na podgrupy (user_name, secured_password)
     table = file.readlines()
 
     for i,user in enumerate(table):
@@ -31,15 +35,6 @@ def prepere_users_tabel():
 file = open('users_table.txt', 'r')
 USERS = prepere_users_tabel()
 
-
-# send response function
-def send_response(data):
-    connection.send(data)
-
-def get_request():
-    request = connection.recv(512)
-    if request:
-        return request
     
 def get_session_key(data):
     params = data.split(',')
@@ -48,53 +43,10 @@ def get_session_key(data):
 def make_some_tasks(data):
     return data[::-1]
 
-# authentication
-def authenticate_client():
-    # ask about user name
-    send_response("User name: ")
-    user_name = get_request()
-
-    # send randomly generated nonce to user
-    send_response(NONCE)
-    
-    # get hash from client
-    client_hash = get_request()
-
-    # compare hashes
-    if compare_hashes(client_hash, user_name):
-        user = find(user_name, USERS)
-        if user == -1:
-            return False
-        user_secured_password = user[1]
-        hash_for_client = hash_engine.generate_hash(user_secured_password, NONCE)
-        send_response(hash_for_client)
-        return True
-    else:
-        return False
-
-# Check if hashes are the same
-def compare_hashes(received_hash, user_name):
-    user = find(user_name, USERS)
-    if user == -1:
-            return False
-    secured_password = user[1]
-    hash_to_compare = hash_engine.generate_hash(NONCE, secured_password)
-
-    return hash_to_compare == received_hash
-
-
-
 # broken connection
 def break_connection():
     print "Not authenticated."
-    connection.send("401")
-
-# function to find user as ['user_name', 'secured_password']
-def find(user_name, table):
-    for user in table:
-        if user[0] == user_name:
-            return user
-    return -1
+    connection.send("401")    
 
 
 
@@ -114,27 +66,29 @@ sock.listen(1)
 print >> sys.stderr, 'waiting for a connection'
 connection, client_address = sock.accept()
 
+communication_engine = CommunicationModule(connection)
+
 try:
     print >>sys.stderr, 'connection from', client_address
     data = ID + ", " + str(NONCE)
-    send_response(data)
+    communication_engine.send_response(data)
 
     print "Waiting for session key."
     # Getting SESSION KEY form message
-    message = get_request()
+    message = communication_engine.get_request()
     decrypted_message = crypto_engine_bob.decrypt(message)
     SESSION_KEY = get_session_key(decrypted_message)
     crypto_engine_session = CryptoEngine(SESSION_KEY)
 
     print "Session key established. Authentication."
-
-    if authenticate_client():
+    authentication_engine = AuthenticationEngine(USERS, hash_engine, connection, NONCE)
+    if authentication_engine.authenticate_client():
         # Getting request from Alice, sending response
-        request = get_request()
+        request = communication_engine.get_request()
         decrypted_request = crypto_engine_session.decrypt(request)
         response = make_some_tasks(decrypted_request)
         encrypted_response = crypto_engine_session.encrypt(response)
-        send_response(encrypted_response)
+        communication_engine.send_response(encrypted_response)
     else:
         break_connection()
 
