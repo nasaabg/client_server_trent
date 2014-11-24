@@ -1,4 +1,5 @@
-Uwierzytelniania z użyciem zaufanej trzeciej strony  BAUER-BERSON-FEIERTAG (wykład 3, slajd 24)
+Uwierzytelniania z użyciem zaufanej trzeciej strony.
+Implementacja protokołu  BAUER-BERSON-FEIERTAG (wykład 3, slajd 24)
 
 Aby uruchomić program należy włączyć 3 karty w konsoli.
 Nastepnie wpisać polecenie:
