@@ -1,13 +1,56 @@
+#! /usr/bin/env python
+# Jan Kurzydlo
 import socket
 import sys
 import hashlib
 import random
+import pdb
+import optparse
 from pyDes import *
 from hashEngine import HashEngine
 from cryptoEngine import CryptoEngine
 
-ID = "2"
+if "-h" in sys.argv or "--help" in sys.argv:
+    print """
+    === FUNKCJONALNOSC ===
+    Uwierzytelniania z uzyciem zaufanej trzeciej strony.
 
+    === URUCHAMIANIE ===
+    Aby uruchomic program nalezy wlaczyc 3 karty w konsoli.
+    Nastepnie wpisac w kazdej kolejno polecenie:
+
+    1 karta) python trent.py
+    2 karta) python bob.py
+    3 karta) ./alice.py "Moja wiadomosc" lub ./alice.py
+    W pkt 3) pierwsza opcja spowoduje wyslanie naszej wiadomosci do Boba podanej w argumencie wykonania,
+    druga spowoduje wyslanie do Boba przykladowej wiadomosci zapisanej w kodzie programu
+
+    W momencie gdy program poprosi o podanie loginu i hasla nalezy podac
+    jedna z 3 opcji z pliku users.txt dolaczonego do projektu.
+
+    === OPIS DZIALANIA ==
+    Alicja nawiazuje polaczenie z Bobem.
+    Bob wysyla jej swoje ID oraz wygenerowany NONCE
+    Alicja wysyla do TRENTA swoje ID i swoj NONCE , oraz ID BOBa oraz NONCE boba
+    Trent generuje KLUCZ SESYJNY Alicji i Boba.
+    Nastepne wysyla 2 komunikaty do Alicji.
+    Jeden zaszyfrowany kluczem alicja-trent (session_key, Bob_id, alice_nonce)
+    Drugi zaszyfrowany kluczem trent-bob (session_key, Alice_id, bob_nonce)
+    Alicja 1 wiadomosc deszyfruje za pomoca klucza alicja-ternt.
+    2 wiadomosc wysyla do boba.
+    Bob deszyfruje wiadomosc kluczem trent-bob.
+    Po deszyfracji Bob i Alicja posiadaja KLUCZ SESYJNY
+    Nastepnie uruchamiany jest proces autentykacji na serwerze Bob'a.
+    Alicja musi podac nazwe uzytkownika i haslo (przykladowe znajduja sie w pliku users.txt)
+    Przeprowadzana jest autentykacja.
+    Po udanej autentykacji Alicja wysyla do Boba zaszyfrowana kluczem sesyjnym wiadomosc (podana przy
+    uruchamianiu lub przykladowa).
+    Bob po otrzymaniu wiadomosci odsyla odpowiedz zpisana od tylu i zaszyfrowana kluczem sesyjnym.
+    Alicja sprawdza poprawmosc odpowiedzi i zamyka polaczenie.
+    """
+    sys.exit()
+
+ID = "2"
 bob_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 trent_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -15,7 +58,11 @@ bob_address = ('localhost', 4000)
 trent_address = ('localhost', 3000)
 
 NONCE = str(random.randint(100000, 999999))
-msg = "To jest wiadomosc klienta do servera"
+
+if len(sys.argv) == 2:
+    msg = sys.argv[1]
+else:
+    msg = "Nie podano wiadomosci - przykladowa wiadomosc."
 
 hash_engine = HashEngine()
 crypto_engine_trent = CryptoEngine("12345678")
