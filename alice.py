@@ -1,177 +1,206 @@
 #! /usr/bin/env python
 # Jan Kurzydlo
-import socket
-import sys
-import hashlib
-import random
-import pdb
-import optparse
-from pyDes import *
-from hashEngine import HashEngine
-from cryptoEngine import CryptoEngine
-
-if "-h" in sys.argv or "--help" in sys.argv:
+def myhelp():
     print """
-    === FUNKCJONALNOSC ===
-    Uwierzytelniania z uzyciem zaufanej trzeciej strony.
+      === FUNKCJONALNOSC ===
+      Uwierzytelniania z uzyciem zaufanej trzeciej strony.
 
-    === URUCHAMIANIE ===
-    Aby uruchomic program nalezy wlaczyc 3 karty w konsoli.
-    Nastepnie wpisac w kazdej kolejno polecenie:
+      === WYMAGANIA DO URUCHOMIENIA ===
+      Aby uruchomic program nalezy miec zainstalowane nizej opisane biblioteki:
+      1)socket
+      2)sys
+      3)hashlib
+      4)random
+      5)pdb
+      6)optparse
+      7)pyDes
 
-    1 karta) python trent.py
-    2 karta) python bob.py
-    3 karta) ./alice.py "Moja wiadomosc" lub ./alice.py
-    W pkt 3) pierwsza opcja spowoduje wyslanie naszej wiadomosci do Boba podanej w argumencie wykonania,
-    druga spowoduje wyslanie do Boba przykladowej wiadomosci zapisanej w kodzie programu
+      przykladowo istalacja PyDes: 
+      $pip install pydes
 
-    W momencie gdy program poprosi o podanie loginu i hasla nalezy podac
-    jedna z 3 opcji z pliku users.txt dolaczonego do projektu.
+      === URUCHAMIANIE ===
+      Aby uruchomic program nalezy wlaczyc 3 karty w konsoli.
+      Nastepnie wpisac w kazdej kolejno polecenie:
 
-    === OPIS DZIALANIA ==
-    Alicja nawiazuje polaczenie z Bobem.
-    Bob wysyla jej swoje ID oraz wygenerowany NONCE
-    Alicja wysyla do TRENTA swoje ID i swoj NONCE , oraz ID BOBa oraz NONCE boba
-    Trent generuje KLUCZ SESYJNY Alicji i Boba.
-    Nastepne wysyla 2 komunikaty do Alicji.
-    Jeden zaszyfrowany kluczem alicja-trent (session_key, Bob_id, alice_nonce)
-    Drugi zaszyfrowany kluczem trent-bob (session_key, Alice_id, bob_nonce)
-    Alicja 1 wiadomosc deszyfruje za pomoca klucza alicja-ternt.
-    2 wiadomosc wysyla do boba.
-    Bob deszyfruje wiadomosc kluczem trent-bob.
-    Po deszyfracji Bob i Alicja posiadaja KLUCZ SESYJNY
-    Nastepnie uruchamiany jest proces autentykacji na serwerze Bob'a.
-    Alicja musi podac nazwe uzytkownika i haslo (przykladowe znajduja sie w pliku users.txt)
-    Przeprowadzana jest autentykacja.
-    Po udanej autentykacji Alicja wysyla do Boba zaszyfrowana kluczem sesyjnym wiadomosc (podana przy
-    uruchamianiu lub przykladowa).
-    Bob po otrzymaniu wiadomosci odsyla odpowiedz zpisana od tylu i zaszyfrowana kluczem sesyjnym.
-    Alicja sprawdza poprawmosc odpowiedzi i zamyka polaczenie.
-    """
-    sys.exit()
+      1 karta) python trent.py
+      2 karta) python bob.py
+      3 karta) ./alice.py "Moja wiadomosc" lub ./alice.py
+      W pkt 3) pierwsza opcja spowoduje wyslanie naszej wiadomosci do Boba podanej w argumencie wykonania,
+      druga spowoduje wyslanie do Boba przykladowej wiadomosci zapisanej w kodzie programu
 
-ID = "2"
-bob_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-trent_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      W momencie gdy program poprosi o podanie loginu i hasla nalezy podac
+      jedna z 3 opcji z pliku users.txt dolaczonego do projektu.
 
-bob_address = ('localhost', 4000)
-trent_address = ('localhost', 3000)
+      === OPIS DZIALANIA ==
+      Alicja nawiazuje polaczenie z Bobem.
+      Bob wysyla jej swoje ID oraz wygenerowany NONCE
+      Alicja wysyla do TRENTA swoje ID i swoj NONCE , oraz ID BOBa oraz NONCE boba
+      Trent generuje KLUCZ SESYJNY Alicji i Boba.
+      Nastepne wysyla 2 komunikaty do Alicji.
+      Jeden zaszyfrowany kluczem alicja-trent (session_key, Bob_id, alice_nonce)
+      Drugi zaszyfrowany kluczem trent-bob (session_key, Alice_id, bob_nonce)
+      Alicja 1 wiadomosc deszyfruje za pomoca klucza alicja-ternt.
+      2 wiadomosc wysyla do boba.
+      Bob deszyfruje wiadomosc kluczem trent-bob.
+      Po deszyfracji Bob i Alicja posiadaja KLUCZ SESYJNY
+      Nastepnie uruchamiany jest proces autentykacji na serwerze Bob'a.
+      Alicja musi podac nazwe uzytkownika i haslo (przykladowe znajduja sie w pliku users.txt)
+      Przeprowadzana jest autentykacja.
+      Po udanej autentykacji Alicja wysyla do Boba zaszyfrowana kluczem sesyjnym wiadomosc (podana przy
+      uruchamianiu lub przykladowa).
+      Bob po otrzymaniu wiadomosci odsyla odpowiedz zpisana od tylu i zaszyfrowana kluczem sesyjnym.
+      Alicja sprawdza poprawmosc odpowiedzi i zamyka polaczenie.
+      """
 
-NONCE = str(random.randint(100000, 999999))
-
-if len(sys.argv) == 2:
-    msg = sys.argv[1]
-else:
-    msg = "Nie podano wiadomosci - przykladowa wiadomosc."
-
-hash_engine = HashEngine()
-crypto_engine_trent = CryptoEngine("12345678")
-
-
-def get_response(sock):
-    response = sock.recv(512)
-    if response:
-        return response
-
-def get_id(response):
-    params = response.split(',')
-    return params[0]
-
-def get_nonce(response):
-    params = response.split(',')
-    return params[1].strip()
-
-def send_request(sock, data):
-    sock.sendall(data)
-
-def get_session_key(data):
-    params = data.split(',')
-    return params[0]
-
-def check_response(response):
-    if response[::-1] == msg:
-        print "Response correct."
-    else:
-        print "Response wrong."
-    
-
-print 'Connecting to Bob on: %s port %s' % bob_address
-bob_sock.connect(bob_address)
-
-print 'Connecting to Trent on: %s port %s' % trent_address
-trent_sock.connect(trent_address)
 
 try:
-  # Getting information from Bob
-  response = get_response(bob_sock)
-  bob_id = get_id(response)
-  bob_nonce = get_nonce(response)
+  import socket
+  import sys
+  import hashlib
+  import random
+  import pdb
+  import optparse
+  from pyDes import *
+  from hashEngine import HashEngine
+  from cryptoEngine import CryptoEngine
 
-  # Params sended to TRENT (id_alice, id_bob, nonce_a, nonce_b)
-  params_for_trent = [ID, bob_id, NONCE, bob_nonce]
-  params_message = ','.join(params_for_trent)
+  if "-h" in sys.argv or "--help" in sys.argv:
+      myhelp()
+      sys.exit()
 
-  print 'Sending connection information to Trent'
-  send_request(trent_sock, params_message)
+  ID = "2"
+  bob_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  trent_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-  print 'Getting Session key generated by Trent.'
-  message_for_me = get_response(trent_sock)
+  bob_address = ('localhost', 4000)
+  trent_address = ('localhost', 3000)
 
-  print 'Message for me received. Sending confirmation.'
-  send_request(trent_sock, "Recived")
+  NONCE = str(random.randint(100000, 999999))
 
-  message_for_bob = get_response(trent_sock)
-  print 'Message for Bob received. Sending confirmation.'
-
-  # Getting SESSION KEY from trent message
-  decrypted_data = crypto_engine_trent.decrypt(message_for_me)
-  SESSION_KEY = get_session_key(decrypted_data)
-  crypto_engine_sesion = CryptoEngine(SESSION_KEY)
-
-  print "Sending session key to Bob."
-  send_request(bob_sock, message_for_bob)
-
-
-  # display message from server
-  if get_response(bob_sock):
-    print "Authentication proces.."
-
-  # send user name
-  user_name = raw_input('Type your login: ')
-  send_request(bob_sock, user_name)
-
-  # get nonce from server
-  nonce = get_response(bob_sock)
-
-  # get user password
-  password = raw_input('Type your password: ')
-
-  # generate hash 
-  secured_password = hash_engine.hahs_function(password)
-  user_hash = hash_engine.generate_hash(nonce, secured_password)
-
-  # send user_hash to server
-  send_request(bob_sock, user_hash) 
-
-  # get response with hash to compare
-  hash_from_server = get_response(bob_sock)
-
-  # compare hash to authenticate server
-  alice_hash = hash_engine.generate_hash(secured_password, nonce)
-  if hash_engine.compare_hashes(hash_from_server, alice_hash):
-      print "Authentication succeeded! Server authenticated!"
-      print 'Sending Request: ' + msg
-      encrypted_msg = crypto_engine_sesion.encrypt(msg)
-      send_request(bob_sock, encrypted_msg)
-      response = get_response(bob_sock)
-      decrypted_response = crypto_engine_sesion.decrypt(response)
-      print "Response: " + decrypted_response
-      print "Checking if correct response.."
-      check_response(decrypted_response)
+  if len(sys.argv) == 2:
+      msg = sys.argv[1]
   else:
-      print "Authentication failed"
+      msg = "Nie podano wiadomosci - przykladowa wiadomosc."
 
-finally:
-    print 'closing socket'
-    bob_sock.close()
-    # trent_sock.close()
+  hash_engine = HashEngine()
+  crypto_engine_trent = CryptoEngine("12345678")
+
+
+  def get_response(sock):
+      response = sock.recv(512)
+      if response:
+          return response
+
+  def get_id(response):
+      params = response.split(',')
+      return params[0]
+
+  def get_nonce(response):
+      params = response.split(',')
+      return params[1].strip()
+
+  def send_request(sock, data):
+      sock.sendall(data)
+
+  def get_session_key(data):
+      params = data.split(',')
+      return params[0]
+
+  def check_response(response):
+      if response[::-1] == msg:
+          print "Response correct."
+      else:
+          print "Response wrong."
+      
+
+  print 'Connecting to Bob on: %s port %s' % bob_address
+  bob_sock.connect(bob_address)
+
+  print 'Connecting to Trent on: %s port %s' % trent_address
+  trent_sock.connect(trent_address)
+
+  try:
+    # Getting information from Bob
+    response = get_response(bob_sock)
+    bob_id = get_id(response)
+    bob_nonce = get_nonce(response)
+
+    # Params sended to TRENT (id_alice, id_bob, nonce_a, nonce_b)
+    params_for_trent = [ID, bob_id, NONCE, bob_nonce]
+    params_message = ','.join(params_for_trent)
+
+    print 'Sending connection information to Trent'
+    send_request(trent_sock, params_message)
+
+    print 'Getting Session key generated by Trent.'
+    message_for_me = get_response(trent_sock)
+
+    print 'Message for me received. Sending confirmation.'
+    send_request(trent_sock, "Recived")
+
+    message_for_bob = get_response(trent_sock)
+    print 'Message for Bob received. Sending confirmation.'
+
+    # Getting SESSION KEY from trent message
+    decrypted_data = crypto_engine_trent.decrypt(message_for_me)
+    SESSION_KEY = get_session_key(decrypted_data)
+    crypto_engine_sesion = CryptoEngine(SESSION_KEY)
+
+    print "Sending session key to Bob."
+    send_request(bob_sock, message_for_bob)
+
+
+    # display message from server
+    if get_response(bob_sock):
+      print "Authentication proces.."
+
+    # send user name
+    user_name = raw_input('Type your login: ')
+    send_request(bob_sock, user_name)
+
+    # get nonce from server
+    nonce = get_response(bob_sock)
+
+    # get user password
+    password = raw_input('Type your password: ')
+
+    # generate hash 
+    secured_password = hash_engine.hahs_function(password)
+    user_hash = hash_engine.generate_hash(nonce, secured_password)
+
+    # send user_hash to server
+    send_request(bob_sock, user_hash) 
+
+    # get response with hash to compare
+    hash_from_server = get_response(bob_sock)
+
+    # compare hash to authenticate server
+    alice_hash = hash_engine.generate_hash(secured_password, nonce)
+    if hash_engine.compare_hashes(hash_from_server, alice_hash):
+        print "Authentication succeeded! Server authenticated!"
+        print 'Sending Request: ' + msg
+        encrypted_msg = crypto_engine_sesion.encrypt(msg)
+        send_request(bob_sock, encrypted_msg)
+        response = get_response(bob_sock)
+        decrypted_response = crypto_engine_sesion.decrypt(response)
+        print "Response: " + decrypted_response
+        print "Checking if correct response.."
+        check_response(decrypted_response)
+    else:
+        print "Authentication failed"
+
+  finally:
+      print 'closing socket'
+      bob_sock.close()
+      trent_sock.close()
+except Exception as e:
+  print """
+      === !!!!  ERROR   !!!! ===
+      Tresc: %s
+      Prosze przeczytac help i wykonac polecenia potrzebne
+      do uruchomienia. (sprawdzic biblioteki oraz wykonac pkt uruchamianie)
+      === !!!!!!!!!!!!!!!!!! ===
+      """ % str(e)
+  if "-h" in sys.argv or "--help" in sys.argv:
+      myhelp()
+      sys.exit()
