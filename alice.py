@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+# -*- coding: utf-8 -*
 # Jan Kurzydlo
 def myhelp():
     print """
@@ -7,23 +8,14 @@ def myhelp():
 
       === WYMAGANIA DO URUCHOMIENIA ===
       Aby uruchomic program nalezy miec zainstalowane nizej opisane biblioteki:
-      1)socket
-      2)sys
-      3)hashlib
-      4)random
-      5)pdb
-      6)optparse
-      7)pyDes
-
-      przykladowo istalacja PyDes: 
-      $pip install pydes
+      1) The Python Standard Library (tzn miec zainstalowanego pythona ze standardowa biblioteka)
 
       === URUCHAMIANIE ===
       Aby uruchomic program nalezy wlaczyc 3 karty w konsoli.
       Nastepnie wpisac w kazdej kolejno polecenie:
 
-      1 karta) python trent.py
-      2 karta) python bob.py
+      1 karta) ./trent.py
+      2 karta) ./bob.py
       3 karta) ./alice.py "Moja wiadomosc" lub ./alice.py
       W pkt 3) pierwsza opcja spowoduje wyslanie naszej wiadomosci do Boba podanej w argumencie wykonania,
       druga spowoduje wyslanie do Boba przykladowej wiadomosci zapisanej w kodzie programu
@@ -48,7 +40,7 @@ def myhelp():
       Przeprowadzana jest autentykacja.
       Po udanej autentykacji Alicja wysyla do Boba zaszyfrowana kluczem sesyjnym wiadomosc (podana przy
       uruchamianiu lub przykladowa).
-      Bob po otrzymaniu wiadomosci odsyla odpowiedz zpisana od tylu i zaszyfrowana kluczem sesyjnym.
+      Bob po otrzymaniu wiadomosci odsyla odpowiedz plus wiadomosc od siebie zaszyfrowana kluczem sesyjnym.
       Alicja sprawdza poprawmosc odpowiedzi i zamyka polaczenie.
       """
 
@@ -56,11 +48,7 @@ def myhelp():
 try:
   import socket
   import sys
-  import hashlib
   import random
-  import pdb
-  import optparse
-  from pyDes import *
   from hashEngine import HashEngine
   from cryptoEngine import CryptoEngine
 
@@ -107,7 +95,7 @@ try:
       return params[0]
 
   def check_response(response):
-      if response[::-1] == msg:
+      if response == msg + " - Pozdrowienia od Boba!":
           print "Response correct."
       else:
           print "Response wrong."
@@ -193,6 +181,8 @@ try:
       print 'closing socket'
       bob_sock.close()
       trent_sock.close()
+except KeyboardInterrupt, e:
+    print "\nSkoro chcesz to sie zamykam..."
 except Exception as e:
   print """
       === !!!!  ERROR   !!!! ===
