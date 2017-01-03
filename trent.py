@@ -12,7 +12,6 @@ try:
     import sys
     import hashlib
     import random
-    from pyDes import *
     from cryptoEngine import CryptoEngine
     from communicationModule import CommunicationModule
 

@@ -1,20 +1,28 @@
 # -*- coding: utf-8 -*-
-import base64
-from Crypto.Cipher import DES
 
 class CryptoEngine:
 
     def __init__(self, key):
-        self.key = key  
+        self.key = "abcdefghijklmnopqrstuvwxyz:)-!*@#$%^&*()ABCDEFGHIJKLMNOPRSTUWXYZ"  
 
-    def encrypt(self, data):
-        k = DES.new(self.key, DES.MODE_CBC, '\0\0\0\0\0\0\0\0')
-        data_normalized = base64.b64encode(data)
-        encrypted_data = k.encrypt(data_normalized)
-        return encrypted_data
+    def encrypt(self, plaintext):
+        result = ''
+        for l in plaintext:
+            try:
+                i = (self.key.index(l) + 5) % 64
+                result += self.key[i]
+            except ValueError:
+                result += l
 
-    def decrypt(self, data):
-        k = DES.new(self.key, DES.MODE_CBC, '\0\0\0\0\0\0\0\0')
-        decrypted_data = k.decrypt(data)
-        data_denormalized = base64.b64decode(decrypted_data)
-        return data_denormalized
+        return result
+
+    def decrypt(self, ciphertext):
+        result = ''
+        for l in ciphertext:
+            try:
+                i = (self.key.index(l) - 5) % 64
+                result += self.key[i]
+            except ValueError:
+                result += l
+
+        return result

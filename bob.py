@@ -11,6 +11,7 @@ def myhelp():
 try:
     import socket
     import sys
+    import os
     import random
     from hashEngine import HashEngine
     from cryptoEngine import CryptoEngine
@@ -43,7 +44,8 @@ try:
         return table
 
     # Tabel of users
-    file = open('users_table.txt', 'r')
+    p  = os.path.dirname(os.path.abspath(__file__)) + '/users_table.txt'
+    file = open(p, 'r')
     USERS = prepere_users_tabel()
 
         

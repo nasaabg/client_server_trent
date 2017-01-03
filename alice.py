@@ -183,6 +183,8 @@ try:
       trent_sock.close()
 except KeyboardInterrupt, e:
     print "\nSkoro chcesz to sie zamykam..."
+except ValueError, e:
+    print "Waidomosc powinna mieć wiecej niz 5 liter"
 except Exception as e:
   print """
       === !!!!  ERROR   !!!! ===
